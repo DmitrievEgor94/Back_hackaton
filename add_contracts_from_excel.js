@@ -7,44 +7,40 @@ const db_name = 'contracts_and_employees';
 
 const collection_name = 'contracts';
 
-const workbook = XLSX.readFile('constracts.xlsx');
+const workbook = XLSX.readFile('table.xlsx');
 const sheet_name_list = workbook.SheetNames;
 let contracts = XLSX.utils.sheet_to_json(workbook.Sheets[sheet_name_list[0]]);
+const uid = require('uid');
+
+console.log(contracts);
 
 const key_mapper =
-    {'Номер контракта':'Number of contract',
-     'Предмет проверки':'Subject of contract',
-     'Адресс объекта':'Address of object',
-     'Координаты':'Coordinates',
-     'Стоимость':'Price',
-     'Предмет проверки':'Subject of contract',
-     'Заказчик':'Provider',
-     'Наличие замечаний':'Problems'
+    {'Номер контракта':'number of contract',
+     'Предмет проверки':'subject of contract',
+     'Адрес объекта':'address of object',
+     'Широта':'latitude',
+     'Долгота':'longtitude',
+     'Стоимость объекта проверки':'price',
+     'Предмет проверки':'subject of contract',
+     'Заказчик':'customer',
+     'Наличие замечаний':'problems',
+     'Дата завершения контракта':'deadline'
 };
 
-var newContracts = contracts.forEach(function (contract) {
-    let newContract = [];
+var newContracts = contracts.map(function (contract) {
+    let newContract = {};
+
+    newContract['id'] = uid();
 
     for (const key in key_mapper){
-        newContract[key_mapper[key]] = contract[key];
-
+        if (key == 'Дата завершения контракта')
+             newContract[key_mapper[key]] = new Date(1900, 0, contract[key] - 1);
+        else  newContract[key_mapper[key]] = contract[key];
     }
+
     return newContract;
 });
 
-// console.log()
-
-const options = {
-    min: 0,
-    max: 1000,
-};
-
-
-contracts.forEach(function(element) {
-    delete element['№'];
-    element['Position']=[rn(options),rn(options)];
-    // console.log(element);
-});
 
 mongoClient.connect(url, function (err, dbo) {
     if (err) throw err;
@@ -55,14 +51,14 @@ mongoClient.connect(url, function (err, dbo) {
     //     if (delOK) console.log("Collection deleted");
     //     dbo.close();
     // });
-
-    db.collection(collection_name).insertMany(contracts, function (err,res) {
+    console.log(newContracts);
+    db.collection(collection_name).insertMany(newContracts, function (err,res) {
         if (err) throw err;
         console.log("Number of documents inserted: " + res.insertedCount);
         db.collection(collection_name).find({}).toArray(function(err, result) {
             if (err) throw err;
             console.log(result);
+            dbo.close();
         });
-        dbo.close();
     });
 });
